@@ -32,6 +32,12 @@ public sealed class HealthAndOpenApiTests(ApiFactory factory) : IClassFixture<Ap
         Assert.Contains("/api/v1/documents", paths);
         Assert.Contains("/api/v1/documents/{id}", paths);
         Assert.Contains("/api/v1/questions", paths);
+        Assert.Contains("/api/v1/chat", paths);
+        Assert.Contains("/api/v1/chat/stream", paths);
+
+        var documents = document.RootElement.GetProperty("paths").GetProperty("/api/v1/documents");
+        Assert.True(documents.TryGetProperty("get", out _));
+        Assert.True(documents.TryGetProperty("post", out _));
     }
 
     [Fact]

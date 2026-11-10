@@ -36,7 +36,8 @@ Question: **question → embedding → filtered vector search → grounded promp
 | `KnowledgeAssistant.Api` | HTTP surface: endpoints, DTOs, authN/authZ, error mapping, OpenAPI | Application, Infrastructure (composition root only) |
 
 Dependencies point inward (Dependency Inversion): Application defines `IChatModel`,
-`IEmbeddingGenerator`, `IDocumentRepository`, `IChunkRetriever`, `IConversationStore`;
+`IEmbeddingGenerator`, `IDocumentRepository` (reads), `IDocumentStore` (writes), `IChunkRetriever`,
+`IConversationStore`;
 Infrastructure implements them. Endpoints never touch `DbContext` or `HttpClient` directly.
 
 ## Security model
@@ -76,7 +77,7 @@ erDiagram
         INTEGER chunk_count
         TEXT uploaded_by_user_id "NOT NULL"
         TEXT allowed_roles "JSON array; [] = all tenant members"
-        TEXT created_at_utc
+        INTEGER created_at_utc "unix milliseconds"
     }
     document_chunks {
         TEXT id PK "GUID"
@@ -97,7 +98,7 @@ erDiagram
         INTEGER sequence "monotonic per insert (UTC ticks)"
         TEXT role "user | assistant"
         TEXT content
-        TEXT created_at_utc
+        INTEGER created_at_utc "unix milliseconds"
     }
 ```
 

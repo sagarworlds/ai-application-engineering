@@ -64,3 +64,26 @@ Short notes on the concepts behind each day, with pointers to where they show up
   evidence — the system instruction says so, because earlier answers may rest on sources the user can no
   longer access.
 - **Low temperature** (0.1) for grounded answers: restate, don't improvise.
+
+## Day 6 — Embeddings and ingestion
+
+- **Embedding**: a vector (hundreds to thousands of floats) representing the meaning of a text. Texts about the
+  same thing point in similar directions; **cosine similarity** measures that (`VectorMath`). Vectors from
+  different models are not comparable, so the model id is stored per chunk and filtered on at query time.
+- **Why chunk**: one vector per whole document blurs many topics together and cannot be cited precisely.
+  Chunks are the unit of retrieval *and* of citation.
+- **Chunk size** (`Ingestion:ChunkSizeCharacters`, default 1200 ≈ 300 tokens): small chunks match precisely but
+  lose context; large chunks carry context but dilute the match and cost prompt tokens.
+- **Overlap** (default 200 characters): the tail of one chunk is repeated at the start of the next so a fact
+  straddling a boundary is whole in at least one chunk. Capped at half the chunk size.
+- **Document-aware splitting** (`DocumentAwareChunker`): split on structure first — page, then heading, then
+  paragraph, then sentence — and only then by size. A chunk never crosses a page or a heading, so its
+  page/section metadata is exact. Headings become metadata; sections carry over to following pages.
+- **Metadata** per chunk: tenant, document, file name/title (via the document), page, section, chunk index,
+  embedding model. Tenant is copied onto the chunk so the search filter does not depend on a join.
+- **Contextual embedding text** (`EmbeddingText`): the vector is computed from "title — section + passage" so a
+  passage like "It must be booked 14 days ahead" still knows what "it" is. The stored passage stays unchanged.
+- **Dedupe**: SHA-256 of the page contents, unique per tenant; a unique index makes the check race-proof.
+- **Development store**: SQLite, vectors as float32 BLOBs, exhaustive cosine scan with a top-K heap
+  (`VectorChunkRetriever`). Fine for thousands of chunks; replace with Azure AI Search / pgvector behind
+  `IChunkRetriever` for production.

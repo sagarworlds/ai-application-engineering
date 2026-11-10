@@ -62,6 +62,61 @@ public sealed class TenantIsolationTests(ApiFactory factory) : IClassFixture<Api
         Assert.DoesNotContain(readerList!.Items, d => d.Id == restricted.Id);
     }
 
+    [Fact]
+    public async Task Question_IsNeverAnsweredFromAnotherTenantsDocuments()
+    {
+        factory.ChatModel.Reset();
+        factory.ChatModel.Reply = _ => SampleDocuments.AnswerCitingSourceOne;
+        var owner = $"tenant-{Guid.NewGuid():N}";
+        var outsider = $"tenant-{Guid.NewGuid():N}";
+        using var contributor = factory.CreateClientFor(owner, AppRoles.Contributor);
+        await contributor.IngestAsync(SampleDocuments.TravelPolicy());
+
+        // Even an admin of another tenant, asking exactly what the document answers, gets nothing:
+        // no chunk is retrieved, so the model is never called and cannot leak anything.
+        using var outsiderAdmin = factory.CreateClientFor(outsider, AppRoles.Admin);
+        var response = await outsiderAdmin.PostAsJsonAsync(
+            "/api/v1/questions", new { question = "How many days in advance must flights be booked?" });
+
+        var answer = await response.Content.ReadFromJsonAsync<QuestionResponse>();
+        Assert.False(answer!.AnswerFound);
+        Assert.Empty(answer.Citations);
+        Assert.Empty(factory.ChatModel.Requests);
+    }
+
+    [Fact]
+    public async Task Question_DoesNotUseRoleRestrictedDocumentsTheCallerCannotRead()
+    {
+        factory.ChatModel.Reset();
+        factory.ChatModel.Reply = _ => SampleDocuments.AnswerCitingSourceOne;
+        var tenant = $"tenant-{Guid.NewGuid():N}";
+        using var contributor = factory.CreateClientFor(tenant, AppRoles.Contributor, "Board.Member");
+        await contributor.IngestAsync(SampleDocuments.TravelPolicy(allowedRoles: ["Board.Member"]));
+        var question = new { question = "How many days in advance must flights be booked?" };
+
+        using var reader = factory.CreateClientFor(tenant, AppRoles.Reader);
+        var denied = await (await reader.PostAsJsonAsync("/api/v1/questions", question)).Content.ReadFromJsonAsync<QuestionResponse>();
+        Assert.False(denied!.AnswerFound);
+        Assert.Empty(factory.ChatModel.Requests);
+
+        using var boardMember = factory.CreateClientFor(tenant, AppRoles.Reader, "Board.Member");
+        var allowed = await (await boardMember.PostAsJsonAsync("/api/v1/questions", question)).Content.ReadFromJsonAsync<QuestionResponse>();
+        Assert.True(allowed!.AnswerFound);
+    }
+
+    [Fact]
+    public async Task Delete_AnotherTenantsDocument_Returns404_AndLeavesItIntact()
+    {
+        var contoso = await SeedAsync("contoso", "keep-me.pdf");
+
+        using var outsider = factory.CreateClientFor("fabrikam", AppRoles.Admin);
+        var response = await outsider.DeleteAsync($"/api/v1/documents/{contoso.Id}");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        using var owner = factory.CreateClientFor("contoso", AppRoles.Reader);
+        Assert.Equal(HttpStatusCode.OK, (await owner.GetAsync($"/api/v1/documents/{contoso.Id}")).StatusCode);
+    }
+
     private async Task<Document> SeedAsync(string tenantId, string fileName, params string[] allowedRoles)
     {
         var owner = new UserContext(tenantId, $"seed@{tenantId}", [AppRoles.Contributor]);

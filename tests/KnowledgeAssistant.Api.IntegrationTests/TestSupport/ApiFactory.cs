@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using KnowledgeAssistant.Application.Abstractions;
 using KnowledgeAssistant.Domain.Documents;
 using KnowledgeAssistant.Infrastructure.Persistence;
+using KnowledgeAssistant.TestSupport;
 
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -34,6 +35,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         {
             services.RemoveAll<IChatModel>();
             services.AddSingleton<IChatModel>(ChatModel);
+            services.RemoveAll<IEmbeddingGenerator>();
+            services.AddSingleton<IEmbeddingGenerator>(Embeddings);
         });
     }
 
@@ -41,6 +44,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 
     /// <summary>The chat model the API talks to in tests.</summary>
     public FakeChatModel ChatModel { get; } = new();
+
+    /// <summary>Deterministic embedding model used by ingestion and retrieval in tests.</summary>
+    public HashingEmbeddingGenerator Embeddings { get; } = new();
 
     /// <summary>Creates a client authenticated as a user of <paramref name="tenantId"/> with the given roles.</summary>
     public HttpClient CreateClientFor(string tenantId, params string[] roles) =>

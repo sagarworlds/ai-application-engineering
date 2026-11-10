@@ -2,9 +2,11 @@ using KnowledgeAssistant.Application.Abstractions;
 using KnowledgeAssistant.Application.Chat;
 using KnowledgeAssistant.Application.Conversations;
 using KnowledgeAssistant.Application.Documents;
+using KnowledgeAssistant.Application.Ingestion;
 using KnowledgeAssistant.Application.Questions;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace KnowledgeAssistant.Application;
 
@@ -27,6 +29,19 @@ public static class DependencyInjection
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
+        services.AddOptions<IngestionOptions>()
+            .BindConfiguration(IngestionOptions.SectionName)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<IngestionOptions>, IngestionOptionsValidator>();
+        services.AddOptions<RetrievalOptions>()
+            .BindConfiguration(RetrievalOptions.SectionName)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        services.AddSingleton<ITextChunker, DocumentAwareChunker>();
+        services.AddScoped<DocumentIngestionService>();
+        services.AddScoped<DocumentDeletionService>();
         services.AddScoped<DocumentQueryService>();
         services.AddScoped<ChatService>();
         services.AddScoped<IQuestionAnswerer, QuestionAnsweringService>();

@@ -1,6 +1,7 @@
 using KnowledgeAssistant.Application.Abstractions;
 using KnowledgeAssistant.Infrastructure.Llm;
 using KnowledgeAssistant.Infrastructure.Persistence;
+using KnowledgeAssistant.Infrastructure.Search;
 
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -33,9 +34,11 @@ public static class DependencyInjection
         }
 
         services.AddDbContext<KnowledgeDbContext>(options => options.UseSqlite(connectionString));
-        services.AddScoped<IDocumentRepository, EfDocumentRepository>();
+        services.AddScoped<EfDocumentRepository>();
+        services.AddScoped<IDocumentRepository>(provider => provider.GetRequiredService<EfDocumentRepository>());
+        services.AddScoped<IDocumentStore>(provider => provider.GetRequiredService<EfDocumentRepository>());
         services.AddScoped<IConversationStore, EfConversationStore>();
-        services.AddScoped<IChunkRetriever, EmptyChunkRetriever>();
+        services.AddScoped<IChunkRetriever, VectorChunkRetriever>();
 
         services.AddOptions<LlmOptions>()
             .BindConfiguration(LlmOptions.SectionName)
@@ -45,6 +48,7 @@ public static class DependencyInjection
 
         // Typed clients: IHttpClientFactory owns handler lifetime (DNS refresh, socket reuse).
         services.AddHttpClient<IChatModel, OpenAiCompatibleChatModel>(ConfigureLlmClient);
+        services.AddHttpClient<IEmbeddingGenerator, OpenAiCompatibleEmbeddingGenerator>(ConfigureLlmClient);
 
         services.AddHealthChecks().AddDbContextCheck<KnowledgeDbContext>("knowledge-db", tags: [ReadinessTag]);
 

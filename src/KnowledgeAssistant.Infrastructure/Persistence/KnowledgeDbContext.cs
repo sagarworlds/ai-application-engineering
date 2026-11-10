@@ -12,6 +12,8 @@ internal sealed partial class KnowledgeDbContext(DbContextOptions<KnowledgeDbCon
 {
     public DbSet<Document> Documents => Set<Document>();
 
+    public DbSet<DocumentChunk> Chunks => Set<DocumentChunk>();
+
     public DbSet<ConversationMessage> ConversationMessages => Set<ConversationMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
