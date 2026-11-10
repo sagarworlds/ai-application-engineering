@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/KnowledgeAssistant.Api/KnowledgeAssistant.Api.csproj" />
+    <Project Path="src/KnowledgeAssistant.Application/KnowledgeAssistant.Application.csproj" />
+    <Project Path="src/KnowledgeAssistant.Domain/KnowledgeAssistant.Domain.csproj" />
+    <Project Path="src/KnowledgeAssistant.Infrastructure/KnowledgeAssistant.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/KnowledgeAssistant.Api.IntegrationTests/KnowledgeAssistant.Api.IntegrationTests.csproj" />
+    <Project Path="tests/KnowledgeAssistant.UnitTests/KnowledgeAssistant.UnitTests.csproj" />
+  </Folder>
+</Solution>
