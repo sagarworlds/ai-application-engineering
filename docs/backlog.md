@@ -31,4 +31,5 @@ Status: ✅ done · ⏭ next · 🗂 later
 - 🗂 Dockerfile + compose (API + pgvector), CI workflow (build, test, vulnerability scan)
 - 🗂 Audit log of questions/answers per tenant with retention policy
 - 🗂 Content safety filtering and PII redaction on ingestion
+- 🗂 Move tests from xunit 2 (marked legacy on NuGet) to xunit.v3
 - 🗂 Document versioning (re-ingest replaces previous version atomically)
