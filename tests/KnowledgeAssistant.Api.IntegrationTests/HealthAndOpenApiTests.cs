@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 
 using KnowledgeAssistant.Api.IntegrationTests.TestSupport;
+using KnowledgeAssistant.Domain.Security;
 
 namespace KnowledgeAssistant.Api.IntegrationTests;
 
@@ -34,13 +35,16 @@ public sealed class HealthAndOpenApiTests(ApiFactory factory) : IClassFixture<Ap
     }
 
     [Fact]
-    public async Task UnknownRoute_ReturnsProblemDetails()
+    public async Task UnknownRoute_Returns404ProblemForAuthenticatedCaller_And401ForAnonymous()
     {
-        using var client = factory.CreateClient();
+        using var anonymous = factory.CreateClient();
+        using var reader = factory.CreateClientFor("tenant-a", AppRoles.Reader);
 
-        var response = await client.GetAsync("/api/v1/does-not-exist");
+        // Deny-by-default also covers routes that do not exist, so anonymous callers cannot probe the API surface.
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync("/api/v1/does-not-exist")).StatusCode);
 
+        var response = await reader.GetAsync("/api/v1/does-not-exist");
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+        await response.ReadProblemAsync();
     }
 }

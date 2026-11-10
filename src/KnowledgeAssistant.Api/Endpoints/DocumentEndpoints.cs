@@ -12,7 +12,11 @@ internal static class DocumentEndpoints
 {
     public static IEndpointRouteBuilder MapDocumentEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/v1/documents").WithTags("Documents");
+        var group = app.MapGroup("/api/v1/documents")
+            .WithTags("Documents")
+            .RequireAuthorization(AuthorizationPolicies.DocumentsRead)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden);
 
         group.MapGet("/", ListAsync)
             .WithName("ListDocuments")

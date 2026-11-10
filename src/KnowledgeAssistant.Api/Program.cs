@@ -6,6 +6,8 @@ using KnowledgeAssistant.Api.ErrorHandling;
 using KnowledgeAssistant.Application;
 using KnowledgeAssistant.Infrastructure;
 
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+
 var builder = WebApplication.CreateBuilder(args);
 
 if (!builder.Environment.IsDevelopment())
@@ -16,7 +18,15 @@ if (!builder.Environment.IsDevelopment())
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
-builder.Services.AddSingleton<ICurrentUser, DevelopmentCurrentUser>();
+
+// Token validation settings (Authority, ValidAudiences, signing keys for local dev tokens) are bound
+// from configuration section "Authentication:Schemes:Bearer". Production: Microsoft Entra ID authority.
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    // Keep raw JWT claim names ("tid", "roles", ...) instead of legacy XML-SOAP claim URIs.
+    .AddJwtBearer(options => options.MapInboundClaims = false);
+builder.Services.AddKnowledgeAuthorization();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUser, ClaimsCurrentUser>();
 
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
@@ -32,6 +42,10 @@ await app.Services.InitializeKnowledgeStoreAsync();
 app.UseExceptionHandler();
 // Gives bodiless error responses (401, 403, 404 for unknown routes) the same problem+json shape.
 app.UseStatusCodePages();
+
+app.UseAuthentication();
+app.UseAuthorization();
+app.UseMiddleware<UserLogScopeMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {

@@ -18,7 +18,7 @@ public sealed class DocumentEndpointsTests(ApiFactory factory) : IClassFixture<A
     {
         var document = NewDocument("travel-policy.pdf");
         await factory.SeedAsync(document);
-        using var client = factory.CreateClient();
+        using var client = factory.CreateClientFor("dev-tenant", AppRoles.Reader);
 
         var page = await client.GetFromJsonAsync<PagedResponse<DocumentResponse>>("/api/v1/documents?pageSize=100");
 
@@ -33,7 +33,7 @@ public sealed class DocumentEndpointsTests(ApiFactory factory) : IClassFixture<A
     {
         var document = NewDocument("handbook.pdf");
         await factory.SeedAsync(document);
-        using var client = factory.CreateClient();
+        using var client = factory.CreateClientFor("dev-tenant", AppRoles.Reader);
 
         var json = await client.GetStringAsync($"/api/v1/documents/{document.Id}");
 
@@ -45,7 +45,7 @@ public sealed class DocumentEndpointsTests(ApiFactory factory) : IClassFixture<A
     [Fact]
     public async Task Get_UnknownDocument_Returns404ProblemWithTraceId()
     {
-        using var client = factory.CreateClient();
+        using var client = factory.CreateClientFor("dev-tenant", AppRoles.Reader);
 
         var response = await client.GetAsync($"/api/v1/documents/{Guid.NewGuid()}");
 
@@ -62,7 +62,7 @@ public sealed class DocumentEndpointsTests(ApiFactory factory) : IClassFixture<A
     [InlineData("page=abc")]
     public async Task List_InvalidPaging_Returns400Problem(string query)
     {
-        using var client = factory.CreateClient();
+        using var client = factory.CreateClientFor("dev-tenant", AppRoles.Reader);
 
         var response = await client.GetAsync($"/api/v1/documents?{query}");
 

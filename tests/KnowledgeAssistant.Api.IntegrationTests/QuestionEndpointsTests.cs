@@ -5,6 +5,7 @@ using System.Text;
 using KnowledgeAssistant.Api.Contracts;
 using KnowledgeAssistant.Api.IntegrationTests.TestSupport;
 using KnowledgeAssistant.Application.Questions;
+using KnowledgeAssistant.Domain.Security;
 
 namespace KnowledgeAssistant.Api.IntegrationTests;
 
@@ -13,7 +14,7 @@ public sealed class QuestionEndpointsTests(ApiFactory factory) : IClassFixture<A
     [Fact]
     public async Task Ask_WithNoSupportingDocuments_ReturnsSafeUnknownAnswer()
     {
-        using var client = factory.CreateClient();
+        using var client = factory.CreateClientFor("dev-tenant", AppRoles.Reader);
 
         var response = await client.PostAsJsonAsync("/api/v1/questions", new { question = "What is the travel policy?" });
 
@@ -32,7 +33,7 @@ public sealed class QuestionEndpointsTests(ApiFactory factory) : IClassFixture<A
     [InlineData("""{"question":"hi"}""", "Question")]
     public async Task Ask_InvalidBody_Returns400WithFieldErrors(string body, string expectedField)
     {
-        using var client = factory.CreateClient();
+        using var client = factory.CreateClientFor("dev-tenant", AppRoles.Reader);
 
         var response = await client.PostAsync("/api/v1/questions", Json(body));
 
@@ -44,7 +45,7 @@ public sealed class QuestionEndpointsTests(ApiFactory factory) : IClassFixture<A
     [Fact]
     public async Task Ask_QuestionTooLong_Returns400()
     {
-        using var client = factory.CreateClient();
+        using var client = factory.CreateClientFor("dev-tenant", AppRoles.Reader);
 
         var response = await client.PostAsJsonAsync(
             "/api/v1/questions", new { question = new string('x', QuestionRequest.MaxQuestionLength + 1) });
@@ -55,7 +56,7 @@ public sealed class QuestionEndpointsTests(ApiFactory factory) : IClassFixture<A
     [Fact]
     public async Task Ask_MalformedJson_Returns400Problem()
     {
-        using var client = factory.CreateClient();
+        using var client = factory.CreateClientFor("dev-tenant", AppRoles.Reader);
 
         var response = await client.PostAsync("/api/v1/questions", Json("{ not json"));
 

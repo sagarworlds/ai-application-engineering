@@ -14,7 +14,10 @@ internal static class QuestionEndpoints
             .WithTags("Questions")
             .WithName("AskQuestion")
             .WithSummary("Answers a question from the caller's documents, with citations.")
-            .ProducesValidationProblem();
+            .RequireAuthorization(AuthorizationPolicies.QuestionsAsk)
+            .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden);
 
         return app;
     }
