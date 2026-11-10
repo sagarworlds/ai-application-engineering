@@ -1,10 +1,12 @@
 using KnowledgeAssistant.Application.Abstractions;
+using KnowledgeAssistant.Infrastructure.Llm;
 using KnowledgeAssistant.Infrastructure.Persistence;
 
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace KnowledgeAssistant.Infrastructure;
 
@@ -33,10 +35,22 @@ public static class DependencyInjection
         services.AddDbContext<KnowledgeDbContext>(options => options.UseSqlite(connectionString));
         services.AddScoped<IDocumentRepository, EfDocumentRepository>();
 
+        services.AddOptions<LlmOptions>()
+            .BindConfiguration(LlmOptions.SectionName)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<LlmOptions>, LlmOptionsValidator>();
+
+        // Typed clients: IHttpClientFactory owns handler lifetime (DNS refresh, socket reuse).
+        services.AddHttpClient<IChatModel, OpenAiCompatibleChatModel>(ConfigureLlmClient);
+
         services.AddHealthChecks().AddDbContextCheck<KnowledgeDbContext>("knowledge-db", tags: [ReadinessTag]);
 
         return services;
     }
+
+    private static void ConfigureLlmClient(IServiceProvider services, HttpClient client) =>
+        LlmHttp.Configure(client, services.GetRequiredService<IOptions<LlmOptions>>().Value);
 
     /// <summary>Health-check tag for dependencies that must be reachable before serving traffic.</summary>
     public const string ReadinessTag = "ready";

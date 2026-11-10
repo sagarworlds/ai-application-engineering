@@ -1,11 +1,14 @@
 using System.Net.Http.Headers;
 
+using KnowledgeAssistant.Application.Abstractions;
 using KnowledgeAssistant.Domain.Documents;
 using KnowledgeAssistant.Infrastructure.Persistence;
 
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace KnowledgeAssistant.Api.IntegrationTests.TestSupport;
 
@@ -25,9 +28,19 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         builder.UseSetting($"{bearer}:ValidAudiences:0", TestTokens.Audience);
         builder.UseSetting($"{bearer}:SigningKeys:0:Issuer", TestTokens.Issuer);
         builder.UseSetting($"{bearer}:SigningKeys:0:Value", Tokens.SigningKeyBase64);
+
+        // No network in tests: model ports are replaced by fakes.
+        builder.ConfigureTestServices(services =>
+        {
+            services.RemoveAll<IChatModel>();
+            services.AddSingleton<IChatModel>(ChatModel);
+        });
     }
 
     public TestTokens Tokens { get; } = new();
+
+    /// <summary>The chat model the API talks to in tests.</summary>
+    public FakeChatModel ChatModel { get; } = new();
 
     /// <summary>Creates a client authenticated as a user of <paramref name="tenantId"/> with the given roles.</summary>
     public HttpClient CreateClientFor(string tenantId, params string[] roles) =>

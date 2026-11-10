@@ -70,6 +70,10 @@ internal static class ExceptionProblemMapper
         },
         NotFoundException => Problem(StatusCodes.Status404NotFound, "Resource not found", exception.Message),
         ConflictException => Problem(StatusCodes.Status409Conflict, "Conflict", exception.Message),
+        LlmUnavailableException => Problem(
+            StatusCodes.Status503ServiceUnavailable, "Language model unavailable", exception.Message),
+        LlmTimeoutException => Problem(
+            StatusCodes.Status504GatewayTimeout, "Language model timed out", exception.Message),
         // Malformed JSON, wrong content type, unparsable route values.
         BadHttpRequestException badRequest => Problem(badRequest.StatusCode, "Bad request", "The request could not be read."),
 

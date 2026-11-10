@@ -1,4 +1,5 @@
 using KnowledgeAssistant.Application.Abstractions;
+using KnowledgeAssistant.Application.Chat;
 using KnowledgeAssistant.Application.Documents;
 using KnowledgeAssistant.Application.Questions;
 
@@ -15,7 +16,13 @@ public static class DependencyInjection
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
         services.AddSingleton(TimeProvider.System);
+        services.AddOptions<GenerationOptions>()
+            .BindConfiguration(GenerationOptions.SectionName)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
         services.AddScoped<DocumentQueryService>();
+        services.AddScoped<ChatService>();
         services.AddScoped<IQuestionAnswerer, QuestionAnsweringService>();
         return services;
     }

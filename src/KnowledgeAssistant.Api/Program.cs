@@ -54,6 +54,7 @@ if (app.Environment.IsDevelopment())
 
 app.MapHealthEndpoints();
 app.MapDocumentEndpoints();
+app.MapChatEndpoints();
 app.MapQuestionEndpoints();
 
 await app.RunAsync();
