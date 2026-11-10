@@ -45,3 +45,22 @@ Short notes on the concepts behind each day, with pointers to where they show up
   The base URL must be https unless it is localhost (`LlmOptionsValidator`).
 - **Provider**: any OpenAI-compatible endpoint. Azure OpenAI: `BaseUrl = https://<resource>.openai.azure.com/openai/v1/`,
   `ApiKeyHeaderName = api-key`, model = deployment name.
+
+## Day 5 — Prompting and reliable outputs
+
+- **System instruction** (`GroundedPromptBuilder.SystemInstruction`): answer only from the numbered sources,
+  cite them, and set `answerFound: false` when evidence is insufficient. "Partial or merely related evidence
+  counts as not enough" matters — without it models answer from the nearest-sounding passage.
+- **Sources are data**: each chunk is wrapped in `<source id="n" …>` and our delimiter tags are neutralised in
+  document text and in the question, so a document cannot close its block and inject instructions.
+- **Structured output** (`GroundedAnswerParser`): the schema asks for `{answerFound, answer, citations}`.
+  The server then checks what a schema cannot: citations must refer to sources that were actually sent.
+  Invented citations are dropped; an answer with none left is downgraded to unknown; malformed output is
+  retried once, then surfaces as 502.
+- **Safe unknown** (`GroundedAnswer`): two shapes only. The unknown text is a server constant, never model
+  text, and when retrieval returns nothing the model is not called at all.
+- **Bounded history** (`BoundedHistory`, `ConversationOptions`): newest messages first, limited by count and by
+  a character budget (≈ tokens × 4), whole messages only. History helps interpret a follow-up; it is not
+  evidence — the system instruction says so, because earlier answers may rest on sources the user can no
+  longer access.
+- **Low temperature** (0.1) for grounded answers: restate, don't improvise.

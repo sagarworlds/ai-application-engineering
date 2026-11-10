@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 
+using KnowledgeAssistant.Domain.Conversations;
 using KnowledgeAssistant.Domain.Documents;
 
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +11,8 @@ namespace KnowledgeAssistant.Infrastructure.Persistence;
 internal sealed partial class KnowledgeDbContext(DbContextOptions<KnowledgeDbContext> options) : DbContext(options)
 {
     public DbSet<Document> Documents => Set<Document>();
+
+    public DbSet<ConversationMessage> ConversationMessages => Set<ConversationMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

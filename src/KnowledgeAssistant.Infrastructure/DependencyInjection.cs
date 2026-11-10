@@ -34,6 +34,8 @@ public static class DependencyInjection
 
         services.AddDbContext<KnowledgeDbContext>(options => options.UseSqlite(connectionString));
         services.AddScoped<IDocumentRepository, EfDocumentRepository>();
+        services.AddScoped<IConversationStore, EfConversationStore>();
+        services.AddScoped<IChunkRetriever, EmptyChunkRetriever>();
 
         services.AddOptions<LlmOptions>()
             .BindConfiguration(LlmOptions.SectionName)

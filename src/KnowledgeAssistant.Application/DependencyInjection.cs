@@ -1,5 +1,6 @@
 using KnowledgeAssistant.Application.Abstractions;
 using KnowledgeAssistant.Application.Chat;
+using KnowledgeAssistant.Application.Conversations;
 using KnowledgeAssistant.Application.Documents;
 using KnowledgeAssistant.Application.Questions;
 
@@ -18,6 +19,11 @@ public static class DependencyInjection
         services.AddSingleton(TimeProvider.System);
         services.AddOptions<GenerationOptions>()
             .BindConfiguration(GenerationOptions.SectionName)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        services.AddOptions<ConversationOptions>()
+            .BindConfiguration(ConversationOptions.SectionName)
             .ValidateDataAnnotations()
             .ValidateOnStart();
 

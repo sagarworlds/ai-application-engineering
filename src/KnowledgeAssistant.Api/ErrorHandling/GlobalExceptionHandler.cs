@@ -74,6 +74,9 @@ internal static class ExceptionProblemMapper
             StatusCodes.Status503ServiceUnavailable, "Language model unavailable", exception.Message),
         LlmTimeoutException => Problem(
             StatusCodes.Status504GatewayTimeout, "Language model timed out", exception.Message),
+        LlmOutputInvalidException => Problem(
+            StatusCodes.Status502BadGateway, "Language model returned an invalid response",
+            "The answer could not be validated. Please try again."),
         // Malformed JSON, wrong content type, unparsable route values.
         BadHttpRequestException badRequest => Problem(badRequest.StatusCode, "Bad request", "The request could not be read."),
 
