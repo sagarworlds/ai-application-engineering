@@ -1,0 +1,18 @@
+{
+  "fileName": "travel-policy.pdf",
+  "title": "Travel Policy 2026",
+  "pages": [
+    {
+      "pageNumber": 1,
+      "text": "# Scope\n\nThis travel policy applies to all employees of Contoso who travel for business. It covers flights, rail, hotels and meals."
+    },
+    {
+      "pageNumber": 2,
+      "text": "# Booking\n\nFlights must be booked at least 14 days in advance through the corporate travel portal. Bookings made later need written approval from a director.\n\n## Travel class\n\nEconomy class is required for flights shorter than 6 hours. Premium economy is allowed for longer flights."
+    },
+    {
+      "pageNumber": 3,
+      "text": "# Meals\n\nThe daily meal allowance is 45 euros. Alcohol is not reimbursed.\n\n# Hotels\n\nHotel rooms may cost up to 160 euros per night in capital cities and 120 euros elsewhere."
+    }
+  ]
+}

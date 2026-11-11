@@ -34,6 +34,7 @@ Each step is small, compiles on its own and has its own tests. One commit per st
 | 6.4 | Ingestion and delete endpoints | integration tests |
 | **Verification** | | |
 | V.1 | Independent code review and security review (subagents) | findings triaged and fixed |
+| V.1b | Fix review findings with regression tests (ReDoS, caps, rate limit, blank roles, stream truncation) | tests + smoke |
 | V.2 | Vulnerable-package scan, secret scan | clean output |
 | V.3 | Real user flows against a running API + mock provider (`scripts/smoke-test.sh`) | script exits 0 |
 
