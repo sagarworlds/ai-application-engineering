@@ -10,6 +10,8 @@ Status: ✅ done · ⏭ next · 🗂 later
 - ✅ OpenAI-compatible chat client with timeout/cancellation; `/chat` and `/chat/stream`
 - ✅ Grounded system instruction, structured output validation, safe unknown answer, bounded history
 - ✅ Document-aware chunking, embeddings, SQLite dev vector store, ingestion endpoint
+- ✅ Independent code + security review; fixes: linear-time heading parsing, section/chunk caps, per-user rate
+  limit and body limits on model-backed endpoints, blank-role rejection, no redirects on the model client
 
 ## Next
 
@@ -19,7 +21,10 @@ Status: ✅ done · ⏭ next · 🗂 later
 - ⏭ **Background ingestion**: queue + worker, document status (`Pending/Ready/Failed`), retries
 - ⏭ **PDF/DOCX extraction**: binary upload endpoint, text extraction (e.g. PdfPig / Azure Document Intelligence)
 - ⏭ **Resilience**: retry with backoff + circuit breaker for 429/5xx from the model provider
-- ⏭ **Rate limiting**: per-tenant/per-user limits on model-backed endpoints (cost and abuse control)
+- ⏭ **Quotas**: per-tenant chunk/storage quota, concurrency limit on streams, conversation retention policy
+- ⏭ **Auth hardening**: fail startup outside Development when no authority/keys are configured; accept the
+  `role` claim only in Development; tenant allow-list for multi-tenant Entra authorities
+- ⏭ **Prompt hardening**: per-request random source delimiters; escape delimiter look-alikes in history turns
 
 ## Later
 

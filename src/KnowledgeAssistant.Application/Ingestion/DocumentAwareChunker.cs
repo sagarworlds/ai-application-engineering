@@ -13,6 +13,7 @@ namespace KnowledgeAssistant.Application.Ingestion;
 public sealed partial class DocumentAwareChunker(IOptions<IngestionOptions> options) : ITextChunker
 {
     private const int MaxHeadingLength = 80;
+    private const int MaxSectionLength = 200;
     private const string ParagraphSeparator = "\n\n";
 
     private readonly int _chunkSize = options.Value.ChunkSizeCharacters;
@@ -67,6 +68,7 @@ public sealed partial class DocumentAwareChunker(IOptions<IngestionOptions> opti
         var lines = text.ReplaceLineEndings("\n").Replace("\f", "\n", StringComparison.Ordinal).Split('\n');
         var paragraph = new StringBuilder();
         var previousLineBlank = true;
+        var previousParagraphWasListItem = false;
 
         for (var i = 0; i < lines.Length; i++)
         {
@@ -83,7 +85,7 @@ public sealed partial class DocumentAwareChunker(IOptions<IngestionOptions> opti
                 continue;
             }
 
-            if (TryReadHeading(line, previousLineBlank, NextNonBlankLine(lines, i + 1)) is { } heading)
+            if (TryReadMarkdownHeading(line) is { } markdownTitle)
             {
                 if (paragraph.Length > 0)
                 {
@@ -91,9 +93,25 @@ public sealed partial class DocumentAwareChunker(IOptions<IngestionOptions> opti
                     paragraph.Clear();
                 }
 
-                yield return new Block(true, heading);
+                // Markdown headings are unambiguous markup, so they become metadata only.
+                yield return new Block(true, markdownTitle);
                 previousLineBlank = true; // text right after a heading starts a new paragraph
+                previousParagraphWasListItem = false;
                 continue;
+            }
+
+            var continuation = i + 1 < lines.Length ? lines[i + 1].Trim() : string.Empty;
+            if (previousLineBlank
+                && IsPlainTextHeading(line, continuation, NextNonBlankLine(lines, i + 1), previousParagraphWasListItem))
+            {
+                // A plain-text heading is a guess. It sets the section, but the line also stays in the
+                // body below, so a wrong guess costs a section label and never loses document text.
+                yield return new Block(true, line);
+            }
+
+            if (paragraph.Length == 0)
+            {
+                previousParagraphWasListItem = NumberedLine().IsMatch(line);
             }
 
             paragraph.Append(paragraph.Length > 0 ? "\n" : string.Empty).Append(line);
@@ -107,29 +125,74 @@ public sealed partial class DocumentAwareChunker(IOptions<IngestionOptions> opti
     }
 
     /// <summary>
-    /// Heading heuristics for extracted text. Markdown headings are unambiguous. Plain-text headings
-    /// (numbered "2.1 Booking" or ALL CAPS) must stand at the start of a paragraph, be short and
-    /// carry no sentence punctuation; a numbered line followed by another numbered line is a list.
+    /// Parses an ATX Markdown heading ("## Title", optionally closed with " ##"). Parsed by hand in
+    /// one pass: this runs on every line of uploaded text, and a backtracking regex here could be
+    /// driven to quadratic time by a crafted line.
     /// </summary>
-    private static string? TryReadHeading(string line, bool startsParagraph, string? nextLine)
+    /// <returns>The heading title (capped at <see cref="MaxSectionLength"/>), or <c>null</c> when the line is not a heading.</returns>
+    private static string? TryReadMarkdownHeading(string line)
     {
-        if (MarkdownHeading().Match(line) is { Success: true } markdown)
+        var level = 0;
+        while (level < line.Length && line[level] == '#')
         {
-            return markdown.Groups["title"].Value;
+            level++;
         }
 
-        if (!startsParagraph || line.Length > MaxHeadingLength || ".,;:!?".Contains(line[^1], StringComparison.Ordinal))
+        if (level is 0 or > 6 || level == line.Length || !char.IsWhiteSpace(line[level]))
         {
             return null;
         }
 
-        if (NumberedHeading().IsMatch(line))
+        var title = line.AsSpan(level).Trim();
+
+        // A closing run of #s counts only when separated by whitespace, so "# C#" keeps its title.
+        var withoutClosing = title.TrimEnd('#');
+        if (withoutClosing.Length < title.Length && (withoutClosing.Length == 0 || char.IsWhiteSpace(withoutClosing[^1])))
         {
-            return nextLine is not null && NumberedLine().IsMatch(nextLine) ? null : line;
+            title = withoutClosing.TrimEnd();
         }
 
-        var letters = line.Count(char.IsLetter);
-        return letters >= 3 && !line.Any(char.IsLower) ? line : null;
+        if (title.Length == 0)
+        {
+            return null;
+        }
+
+        // The section is copied onto every chunk beneath it (rows, embedding input, prompts,
+        // citations), so an unbounded heading would multiply its own size by the chunk count.
+        return title.Length <= MaxSectionLength ? title.ToString() : title[..MaxSectionLength].ToString();
+    }
+
+    /// <summary>
+    /// Heading heuristics for extracted plain text: a short line at the start of a paragraph, without
+    /// sentence punctuation, that is either numbered ("2.1 Booking") or ALL CAPS. Numbered list
+    /// items and the first line of a wrapped sentence are excluded.
+    /// </summary>
+    /// <param name="line">Candidate line (trimmed).</param>
+    /// <param name="continuation">The line directly below, or empty when blank or absent.</param>
+    /// <param name="nextNonBlankLine">The next line that has text, if any.</param>
+    /// <param name="previousParagraphWasListItem">Whether the preceding paragraph began like "1. ...".</param>
+    private static bool IsPlainTextHeading(
+        string line, string continuation, string? nextNonBlankLine, bool previousParagraphWasListItem)
+    {
+        if (line.Length > MaxHeadingLength || ".,;:!?".Contains(line[^1], StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        // "…budgets were cut by" / "10 percent across all teams": the sentence simply wrapped.
+        if (continuation.Length > 0 && (char.IsLower(continuation[0]) || char.IsDigit(continuation[0])))
+        {
+            return false;
+        }
+
+        if (NumberedHeading().IsMatch(line))
+        {
+            var isListItem = NumberedLine().IsMatch(line)
+                && (previousParagraphWasListItem || (nextNonBlankLine is not null && NumberedLine().IsMatch(nextNonBlankLine)));
+            return !isListItem;
+        }
+
+        return line.Count(char.IsLetter) >= 3 && !line.Any(char.IsLower);
     }
 
     private static string? NextNonBlankLine(string[] lines, int start)
@@ -179,9 +242,6 @@ public sealed partial class DocumentAwareChunker(IOptions<IngestionOptions> opti
             }
         }
     }
-
-    [GeneratedRegex(@"^#{1,6}\s+(?<title>.+?)\s*#*$")]
-    private static partial Regex MarkdownHeading();
 
     [GeneratedRegex(@"^\d+(\.\d+)*\.?\s+\p{Lu}")]
     private static partial Regex NumberedHeading();

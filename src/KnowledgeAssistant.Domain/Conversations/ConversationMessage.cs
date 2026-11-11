@@ -73,7 +73,8 @@ public sealed class ConversationMessage
             Sequence = sequence,
             Role = role,
             Content = content,
-            CreatedAtUtc = createdAtUtc.ToUniversalTime(),
+            // Millisecond precision: what the store keeps, so a created entity equals its reloaded self.
+            CreatedAtUtc = DateTimeOffset.FromUnixTimeMilliseconds(createdAtUtc.ToUnixTimeMilliseconds()),
         };
     }
 }

@@ -166,6 +166,8 @@ Status mapping for failures:
 | Missing role or tenant claim | 403 |
 | Not found **or not accessible** to caller | 404 |
 | Same content already ingested in tenant | 409 |
+| Request body over the endpoint limit (64 KB chat/questions, 16 MB ingestion) | 413 |
+| Per-user limit on model-backed endpoints exceeded | 429 |
 | Model returned output that fails validation (after one retry) | 502 |
 | Model provider not configured / unreachable / rejected the call | 503 |
 | Model call timed out | 504 |

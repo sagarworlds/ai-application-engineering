@@ -130,11 +130,20 @@ internal sealed partial class OpenAiCompatibleChatModel(
                 }
 
                 var chunk = JsonSerializer.Deserialize<StreamPayload>(data, PayloadOptions);
+                if (chunk?.Error is not null)
+                {
+                    throw new LlmUnavailableException("The language model provider reported an error while streaming.");
+                }
+
                 if (chunk?.Choices?.FirstOrDefault()?.Delta?.Content is { Length: > 0 } text)
                 {
                     yield return text;
                 }
             }
+
+            // The body ended without the terminating [DONE] event: the reply was cut off upstream.
+            // Reporting that as success would present a truncated answer as complete.
+            throw new LlmUnavailableException("The language model stream ended unexpectedly.");
         }
     }
 
@@ -207,10 +216,14 @@ internal sealed partial class OpenAiCompatibleChatModel(
     {
         if (!_options.IsChatConfigured)
         {
-            throw new LlmUnavailableException(
-                "The language model is not configured. Set Llm:BaseUrl and Llm:ChatModel.");
+            // Which settings are missing is an operator concern; it goes to the log, not to API clients.
+            LogNotConfigured(logger);
+            throw new LlmUnavailableException("The language model is not configured.");
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Chat model is not configured: set Llm:BaseUrl and Llm:ChatModel")]
+    private static partial void LogNotConfigured(ILogger logger);
 
     [LoggerMessage(Level = LogLevel.Information,
         Message = "Chat completion by {Model} took {ElapsedMs:0} ms (input {InputTokens} tokens, output {OutputTokens} tokens, finish {FinishReason})")]
@@ -227,7 +240,7 @@ internal sealed partial class OpenAiCompatibleChatModel(
         [property: JsonPropertyName("prompt_tokens")] int PromptTokens,
         [property: JsonPropertyName("completion_tokens")] int CompletionTokens);
 
-    private sealed record StreamPayload(List<StreamChoice>? Choices);
+    private sealed record StreamPayload(List<StreamChoice>? Choices, JsonElement? Error);
 
     private sealed record StreamChoice(Message? Delta);
 }

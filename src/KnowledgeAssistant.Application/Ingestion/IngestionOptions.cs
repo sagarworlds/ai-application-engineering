@@ -32,6 +32,13 @@ public sealed class IngestionOptions
     [Range(1, 50_000_000)]
     public int MaxTotalCharacters { get; set; } = 2_000_000;
 
+    /// <summary>
+    /// Maximum chunks per document. Bounds embedding calls (provider cost) and the rows every later
+    /// search in the tenant has to scan, however the text is structured.
+    /// </summary>
+    [Range(1, 1_000_000)]
+    public int MaxChunksPerDocument { get; set; } = 5000;
+
     /// <summary>Number of chunks sent to the embedding model per request.</summary>
     [Range(1, 512)]
     public int EmbeddingBatchSize { get; set; } = 64;

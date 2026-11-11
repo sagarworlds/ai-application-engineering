@@ -73,4 +73,5 @@ Every actor belongs to exactly one **tenant** (the `tid` claim of their token).
 12. A model call exceeding the configured timeout returns 504; a client disconnect cancels the upstream call.
 13. Conversation history sent to the model never exceeds the configured message and character limits.
 14. `GET /openapi/v1.json` describes all endpoints (Development environment).
-15. `dotnet list package --vulnerable --include-transitive` reports no known vulnerabilities; no secret is committed.
+15. Model-backed endpoints (chat, questions, ingestion) are limited per user per minute (429) and reject oversized bodies (413).
+16. `dotnet list package --vulnerable --include-transitive` reports no known vulnerabilities; no secret is committed.

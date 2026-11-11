@@ -16,7 +16,7 @@ internal sealed class DocumentChunkConfiguration : IEntityTypeConfiguration<Docu
         builder.HasKey(c => c.Id);
 
         builder.Property(c => c.TenantId).HasMaxLength(PersistenceLimits.IdentifierLength).IsRequired();
-        builder.Property(c => c.Section).HasMaxLength(256);
+        builder.Property(c => c.Section).HasMaxLength(DocumentChunk.MaxSectionLength);
         builder.Property(c => c.Content).IsRequired();
         builder.Property(c => c.EmbeddingModel).HasMaxLength(128).IsRequired();
 

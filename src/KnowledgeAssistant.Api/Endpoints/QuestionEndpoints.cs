@@ -1,8 +1,10 @@
 using KnowledgeAssistant.Api.Auth;
 using KnowledgeAssistant.Api.Contracts;
+using KnowledgeAssistant.Api.RateLimiting;
 using KnowledgeAssistant.Application.Abstractions;
 
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 
 namespace KnowledgeAssistant.Api.Endpoints;
 
@@ -15,6 +17,9 @@ internal static class QuestionEndpoints
             .WithName("AskQuestion")
             .WithSummary("Answers a question from the caller's documents, with citations.")
             .RequireAuthorization(AuthorizationPolicies.QuestionsAsk)
+            .RequireRateLimiting(ModelRateLimiting.PolicyName)
+            .WithMetadata(new RequestSizeLimitAttribute(EndpointLimits.SmallJsonBodyBytes))
+            .ProducesProblem(StatusCodes.Status429TooManyRequests)
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status403Forbidden)

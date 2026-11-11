@@ -6,6 +6,9 @@ namespace KnowledgeAssistant.Domain.Documents;
 /// </summary>
 public sealed class DocumentChunk
 {
+    /// <summary>Maximum length of <see cref="Section"/>.</summary>
+    public const int MaxSectionLength = 256;
+
     // Required by EF Core materialisation.
     private DocumentChunk()
     {
@@ -67,6 +70,11 @@ public sealed class DocumentChunk
         ArgumentOutOfRangeException.ThrowIfLessThan(pageNumber, 1);
         ArgumentException.ThrowIfNullOrWhiteSpace(content);
         ArgumentException.ThrowIfNullOrWhiteSpace(embeddingModel);
+        if (section is { Length: > MaxSectionLength })
+        {
+            throw new ArgumentException($"A section heading must be at most {MaxSectionLength} characters.", nameof(section));
+        }
+
         if (embedding.Length == 0)
         {
             throw new ArgumentException("An embedding vector must not be empty.", nameof(embedding));

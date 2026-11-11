@@ -77,7 +77,8 @@ internal static class DocumentMappings
     public static IngestDocumentCommand ToCommand(this IngestDocumentRequest request) => new(
         request.FileName,
         request.Title,
-        [.. request.Pages.Select(p => new PageContent(p.PageNumber, p.Text))],
+        // A JSON null element survives model binding; pass it on so the service rejects it as a 400.
+        [.. request.Pages.Select(p => p is null ? null! : new PageContent(p.PageNumber, p.Text))],
         request.AllowedRoles);
 
     // The tenant id is deliberately not part of the response: callers only ever see their own tenant.

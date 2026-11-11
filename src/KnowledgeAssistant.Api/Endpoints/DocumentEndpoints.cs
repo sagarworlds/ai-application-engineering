@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 using KnowledgeAssistant.Api.Auth;
 using KnowledgeAssistant.Api.Contracts;
+using KnowledgeAssistant.Api.RateLimiting;
 using KnowledgeAssistant.Application.Documents;
 using KnowledgeAssistant.Application.Ingestion;
 
@@ -34,7 +35,9 @@ internal static class DocumentEndpoints
             .WithName("IngestDocument")
             .WithSummary("Ingests extracted document text: chunks it, embeds the chunks and stores them.")
             .RequireAuthorization(AuthorizationPolicies.DocumentsWrite)
+            .RequireRateLimiting(ModelRateLimiting.PolicyName)
             .WithMetadata(new RequestSizeLimitAttribute(MaxIngestRequestBytes))
+            .ProducesProblem(StatusCodes.Status429TooManyRequests)
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesProblem(StatusCodes.Status503ServiceUnavailable)

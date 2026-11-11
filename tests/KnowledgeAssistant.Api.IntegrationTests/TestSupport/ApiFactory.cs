@@ -30,6 +30,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         builder.UseSetting($"{bearer}:SigningKeys:0:Issuer", TestTokens.Issuer);
         builder.UseSetting($"{bearer}:SigningKeys:0:Value", Tokens.SigningKeyBase64);
 
+        // Tests share a handful of users; the per-user limit has its own test (RateLimitingTests).
+        builder.UseSetting("RateLimiting:ModelRequestsPerMinute", "100000");
+
         // No network in tests: model ports are replaced by fakes.
         builder.ConfigureTestServices(services =>
         {

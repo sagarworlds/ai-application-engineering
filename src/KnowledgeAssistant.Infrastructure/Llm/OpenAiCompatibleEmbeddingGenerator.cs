@@ -13,7 +13,7 @@ namespace KnowledgeAssistant.Infrastructure.Llm;
 /// <see cref="IEmbeddingGenerator"/> over the OpenAI-compatible <c>POST embeddings</c> API.
 /// Created through <see cref="IHttpClientFactory"/> as a typed client.
 /// </summary>
-internal sealed class OpenAiCompatibleEmbeddingGenerator(
+internal sealed partial class OpenAiCompatibleEmbeddingGenerator(
     HttpClient httpClient,
     IOptions<LlmOptions> options,
     ILogger<OpenAiCompatibleEmbeddingGenerator> logger) : IEmbeddingGenerator
@@ -29,8 +29,8 @@ internal sealed class OpenAiCompatibleEmbeddingGenerator(
         ArgumentNullException.ThrowIfNull(inputs);
         if (!_options.IsEmbeddingConfigured)
         {
-            throw new LlmUnavailableException(
-                "The embedding model is not configured. Set Llm:BaseUrl and Llm:EmbeddingModel.");
+            LogNotConfigured(logger);
+            throw new LlmUnavailableException("The embedding model is not configured.");
         }
 
         if (inputs.Count == 0)
@@ -71,6 +71,9 @@ internal sealed class OpenAiCompatibleEmbeddingGenerator(
             throw translated;
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Embedding model is not configured: set Llm:BaseUrl and Llm:EmbeddingModel")]
+    private static partial void LogNotConfigured(ILogger logger);
 
     private sealed record EmbeddingPayload(List<EmbeddingItem>? Data);
 

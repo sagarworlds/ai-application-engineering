@@ -93,17 +93,25 @@ public sealed class DocumentIngestionServiceTests : IDisposable
     [InlineData("too-many-pages")]
     [InlineData("too-many-characters")]
     [InlineData("role-too-long")]
+    [InlineData("blank-role")]
+    [InlineData("null-page")]
+    [InlineData("too-many-chunks")]
     public async Task IngestAsync_InvalidContent_ThrowsValidationAndStoresNothing(string scenario)
     {
         _options.MaxPages = 3;
         _options.MaxTotalCharacters = 500;
+        _options.MaxChunksPerDocument = 3;
         var command = scenario switch
         {
             "no-text" => new IngestDocumentCommand("a.pdf", null, [new PageContent(1, " \n ")], null),
             "duplicate-pages" => new IngestDocumentCommand("a.pdf", null, [new PageContent(1, "x"), new PageContent(1, "y")], null),
             "too-many-pages" => new IngestDocumentCommand("a.pdf", null, [.. Enumerable.Range(1, 4).Select(i => new PageContent(i, "x"))], null),
             "too-many-characters" => new IngestDocumentCommand("a.pdf", null, [new PageContent(1, new string('x', 501))], null),
-            _ => new IngestDocumentCommand("a.pdf", null, [new PageContent(1, "text")], [new string('r', 129)]),
+            "role-too-long" => new IngestDocumentCommand("a.pdf", null, [new PageContent(1, "text")], [new string('r', 129)]),
+            // Dropping the blank would silently turn a restricted document into an unrestricted one.
+            "blank-role" => new IngestDocumentCommand("a.pdf", null, [new PageContent(1, "text")], [" "]),
+            "null-page" => new IngestDocumentCommand("a.pdf", null, [null!], null),
+            _ => new IngestDocumentCommand("a.pdf", null, [new PageContent(1, "a\n\n# h\n\nb\n\n# h\n\nc\n\n# h\n\nd")], null),
         };
 
         await Assert.ThrowsAsync<RequestValidationException>(() => IngestAsync(TestUsers.Contributor(), command));

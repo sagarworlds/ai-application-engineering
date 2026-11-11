@@ -90,7 +90,8 @@ public sealed class Document
             PageCount = pageCount,
             ChunkCount = chunkCount,
             AllowedRoles = NormalizeRoles(allowedRoles),
-            CreatedAtUtc = createdAtUtc.ToUniversalTime(),
+            // Millisecond precision: what the store keeps, so a created entity equals its reloaded self.
+            CreatedAtUtc = DateTimeOffset.FromUnixTimeMilliseconds(createdAtUtc.ToUnixTimeMilliseconds()),
         };
     }
 

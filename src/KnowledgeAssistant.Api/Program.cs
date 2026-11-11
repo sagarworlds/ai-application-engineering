@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using KnowledgeAssistant.Api.Auth;
 using KnowledgeAssistant.Api.Endpoints;
 using KnowledgeAssistant.Api.ErrorHandling;
+using KnowledgeAssistant.Api.RateLimiting;
 using KnowledgeAssistant.Application;
 using KnowledgeAssistant.Infrastructure;
 
@@ -28,6 +29,7 @@ builder.Services.AddKnowledgeAuthorization();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, ClaimsCurrentUser>();
 
+builder.Services.AddModelRateLimiting(builder.Configuration);
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddValidation();
@@ -46,6 +48,7 @@ app.UseStatusCodePages();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseMiddleware<UserLogScopeMiddleware>();
+app.UseRateLimiter();
 
 if (app.Environment.IsDevelopment())
 {

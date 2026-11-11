@@ -203,6 +203,44 @@ public sealed class OpenAiCompatibleChatModelTests
         Assert.Contains("\"stream\":true", handler.Requests[0].Body, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("data: {\"choices\":[{\"delta\":{\"content\":\"partial\"}}]}\n\n")] // connection closed, no [DONE]
+    [InlineData("data: {\"choices\":[{\"delta\":{\"content\":\"partial\"}}]}\n\ndata: {\"error\":{\"message\":\"overloaded\"}}\n\ndata: [DONE]\n\n")]
+    public async Task StreamAsync_TruncatedOrFailedStream_ThrowsInsteadOfLookingComplete(string sse)
+    {
+        var handler = new StubHttpMessageHandler((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(sse, Encoding.UTF8, "text/event-stream"),
+        }));
+
+        var received = new List<string>();
+        await Assert.ThrowsAsync<LlmUnavailableException>(async () =>
+        {
+            await foreach (var delta in CreateModel(handler).StreamAsync(Request, CancellationToken.None))
+            {
+                received.Add(delta);
+            }
+        });
+
+        Assert.Equal(["partial"], received);
+    }
+
+    [Fact]
+    public async Task StreamAsync_CallerCancels_PropagatesCancellationNotTimeout()
+    {
+        var model = CreateModel(StubHttpMessageHandler.Hanging());
+        using var caller = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+
+        var exception = await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
+        {
+            await foreach (var _ in model.StreamAsync(Request, caller.Token))
+            {
+            }
+        });
+
+        Assert.IsNotType<LlmTimeoutException>(exception);
+    }
+
     [Fact]
     public async Task StreamAsync_ProviderStalls_ThrowsLlmTimeoutException()
     {

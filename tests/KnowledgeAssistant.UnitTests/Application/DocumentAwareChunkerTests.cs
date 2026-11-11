@@ -57,7 +57,8 @@ public sealed class DocumentAwareChunkerTests
         var chunks = Chunker().Chunk([new PageContent(1, page)]);
 
         Assert.Equal(["EXPENSE POLICY", "2.1 Meal Allowances"], chunks.Select(c => c.Section));
-        Assert.Equal("The daily meal allowance is 45 euros.", chunks[1].Content);
+        // Plain-text headings are a heuristic, so the line also stays in the body: nothing is ever lost.
+        Assert.Equal("2.1 Meal Allowances\nThe daily meal allowance is 45 euros.", chunks[1].Content);
     }
 
     [Fact]
@@ -70,6 +71,73 @@ public sealed class DocumentAwareChunkerTests
 
         Assert.All(chunks, c => Assert.Null(c.Section));
         Assert.Contains("1. Submit the form\n2. Attach receipts", string.Join("\n\n", chunks.Select(c => c.Content)), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("2024 Travel budgets were cut by\n10 percent across all teams.")] // wrapped sentence
+    [InlineData("1. Alpha step\n\n2. Beta step\n\n3. Gamma step\n\nAfterwards, file the report.")] // loose list
+    public void Chunk_TextThatOnlyLooksLikeAHeading_GetsNoSection(string page)
+    {
+        var chunks = Chunker().Chunk([new PageContent(1, page)]);
+
+        Assert.All(chunks, c => Assert.Null(c.Section));
+    }
+
+    [Theory]
+    [InlineData("DO NOT TRAVEL WITHOUT APPROVAL")]
+    [InlineData("2024 Travel budgets were cut by\n10 percent across all teams.")]
+    [InlineData("1. Alpha step\n\n2. Beta step\n\n3. Gamma step\n\nAfterwards, file the report.")]
+    [InlineData("EXPENSE POLICY\nReceipts are required.\n\n3 Approval Rules\n\nManagers approve claims.")]
+    public void Chunk_PlainText_NeverDropsALineFromTheBody(string page)
+    {
+        var body = string.Join("\n", Chunker().Chunk([new PageContent(1, page)]).Select(c => c.Content));
+
+        Assert.All(
+            page.Split('\n', StringSplitOptions.RemoveEmptyEntries),
+            line => Assert.Contains(line, body, StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("# C#", "C#")]
+    [InlineData("## F# in practice ##", "F# in practice")]
+    [InlineData("###### Deep", "Deep")]
+    public void Chunk_MarkdownHeading_KeepsHashesThatBelongToTheTitle(string heading, string expectedSection)
+    {
+        var chunk = Assert.Single(Chunker().Chunk([new PageContent(1, $"{heading}\n\nBody text.")]));
+
+        Assert.Equal(expectedSection, chunk.Section);
+    }
+
+    [Theory]
+    [InlineData("#NoSpace is body text")]
+    [InlineData("####### seven hashes is body text")]
+    public void Chunk_NotQuiteMarkdownHeadings_StayBodyText(string line)
+    {
+        var chunk = Assert.Single(Chunker().Chunk([new PageContent(1, line)]));
+
+        Assert.Null(chunk.Section);
+        Assert.Equal(line, chunk.Content);
+    }
+
+    [Fact]
+    public void Chunk_PathologicalHeadingLine_IsParsedInLinearTime()
+    {
+        // With a backtracking regex this line took minutes (quadratic); it must stay instant.
+        var line = "# x" + new string(' ', 400_000) + "a";
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        var chunks = Chunker().Chunk([new PageContent(1, line + "\n\nBody text.")]);
+
+        Assert.True(stopwatch.Elapsed < TimeSpan.FromSeconds(2), $"took {stopwatch.Elapsed}");
+        Assert.Single(chunks);
+    }
+
+    [Fact]
+    public void Chunk_OversizedHeading_IsCappedSoItCannotBloatEveryChunk()
+    {
+        var chunks = Chunker().Chunk([new PageContent(1, "# " + new string('h', 5000) + "\n\nBody text.")]);
+
+        Assert.Equal(200, Assert.Single(chunks).Section!.Length);
     }
 
     [Fact]

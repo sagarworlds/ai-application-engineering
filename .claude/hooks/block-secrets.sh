@@ -3,6 +3,9 @@
 # Exit code 2 blocks the tool call and feeds stderr back to Claude.
 set -euo pipefail
 
+# Fail closed: without jq the content cannot be inspected, so nothing may be written.
+command -v jq >/dev/null || { echo "Blocked: jq is required by the secret guard hook." >&2; exit 2; }
+
 input="$(cat)"
 content="$(jq -r '[.tool_input.content, .tool_input.new_string] | map(select(. != null)) | join("\n")' <<<"$input")"
 file="$(jq -r '.tool_input.file_path // ""' <<<"$input")"

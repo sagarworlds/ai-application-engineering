@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using KnowledgeAssistant.Api.Contracts;
 using KnowledgeAssistant.Api.IntegrationTests.TestSupport;
 using KnowledgeAssistant.Application.Abstractions;
+using KnowledgeAssistant.Application.Exceptions;
 using KnowledgeAssistant.Application.Questions;
 using KnowledgeAssistant.Domain.Security;
 
@@ -151,6 +152,8 @@ public sealed class IngestionAndQuestionFlowTests : IClassFixture<ApiFactory>
     [InlineData("""{"fileName":"a.pdf"}""", "Pages")]
     [InlineData("""{"fileName":"a.pdf","pages":[{"pageNumber":0,"text":"x"}]}""", "Pages[0].PageNumber")]
     [InlineData("""{"fileName":"a.pdf","pages":[{"pageNumber":1,"text":"  "}]}""", "pages")]
+    [InlineData("""{"fileName":"a.pdf","pages":[null]}""", "pages")]
+    [InlineData("""{"fileName":"a.pdf","allowedRoles":[" "],"pages":[{"pageNumber":1,"text":"x"}]}""", "allowedRoles")]
     [InlineData("""{"fileName":"a.pdf","pages":[{"pageNumber":1,"text":"x"},{"pageNumber":1,"text":"y"}]}""", "pages")]
     public async Task Ingest_InvalidBody_Returns400NamingTheField(string json, string expectedField)
     {
@@ -162,6 +165,31 @@ public sealed class IngestionAndQuestionFlowTests : IClassFixture<ApiFactory>
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var problem = await response.ReadProblemAsync();
         Assert.True(problem.GetProperty("errors").TryGetProperty(expectedField, out _), problem.ToString());
+    }
+
+    [Fact]
+    public async Task Ingest_CreatedTimestampMatchesWhatIsReadBackLater()
+    {
+        using var contributor = _factory.CreateClientFor(NewTenant(), AppRoles.Contributor);
+
+        var created = await contributor.IngestAsync(SampleDocuments.TravelPolicy());
+        var fetched = await contributor.GetFromJsonAsync<DocumentResponse>($"/api/v1/documents/{created.Id}");
+
+        Assert.Equal(created.CreatedAtUtc, fetched!.CreatedAtUtc);
+    }
+
+    [Fact]
+    public async Task Ask_EmbeddingOrChatProviderDown_Returns503Problem()
+    {
+        var tenant = NewTenant();
+        using var contributor = _factory.CreateClientFor(tenant, AppRoles.Contributor);
+        await contributor.IngestAsync(SampleDocuments.TravelPolicy());
+        _factory.ChatModel.Reply = _ => throw new LlmUnavailableException("The language model provider could not be reached.");
+
+        var response = await contributor.PostAsJsonAsync("/api/v1/questions", new { question = BookingQuestion });
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        await response.ReadProblemAsync();
     }
 
     [Fact]

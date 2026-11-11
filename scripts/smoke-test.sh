@@ -129,16 +129,27 @@ check "chat stream -> 200"                        200 "$(request "$READER" POST 
 check "stream has delta events"                   true "$(grep -q '^event: delta' "$WORK/body" && echo true || echo false)"
 check "stream ends with done event"               true "$(grep -q '^event: done' "$WORK/body" && echo true || echo false)"
 
+echo "--- limits (enforced by the real server, so checked here rather than in the in-process tests)"
+node -e 'process.stdout.write(JSON.stringify({ question: "x".repeat(200000) }))' >"$WORK/big.json"
+check "oversized question body -> 413"            413 "$(curl -sS -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $READER" \
+  -H 'Content-Type: application/json' --data-binary "@$WORK/big.json" "$API/api/v1/questions")"
+check "blank allowedRoles entry -> 400"           400 "$(request "$CONTRIBUTOR" POST /api/v1/documents \
+  '{"fileName":"r.pdf","allowedRoles":[" "],"pages":[{"pageNumber":1,"text":"restricted text"}]}')"
+
 echo "--- deletion"
 check "contributor deletes the document -> 204"   204 "$(request "$CONTRIBUTOR" DELETE "/api/v1/documents/$DOCUMENT_ID")"
 check "deleted document is no longer evidence"    false "$(request "$READER" POST /api/v1/questions "$QUESTION" >/dev/null; jq -r .answerFound "$WORK/body")"
 
 echo "--- provider timeout (second API instance, 1 s timeout, provider answers after 3 s)"
 MOCK_LLM_DELAY_MS=3000 node "$ROOT/tools/mock-llm/server.mjs" "$SLOW_MOCK_PORT" >"$WORK/slow-mock.log" 2>&1 & PIDS+=($!)
-start_api "$SLOW_API_PORT" "$SLOW_MOCK_PORT" slow-api Llm__RequestTimeout=00:00:01
+start_api "$SLOW_API_PORT" "$SLOW_MOCK_PORT" slow-api Llm__RequestTimeout=00:00:01 RateLimiting__ModelRequestsPerMinute=2
 BASE="http://127.0.0.1:$SLOW_API_PORT"
 check "slow provider -> 504"                      504 "$(request "$READER" POST /api/v1/chat '{"message":"hello"}')"
 check "timeout is a problem response"             "Language model timed out" "$(jq -r .title "$WORK/body")"
+
+check "second call within budget -> 504"          504 "$(request "$READER" POST /api/v1/chat '{"message":"hello"}')"
+check "third call exceeds per-user limit -> 429"  429 "$(request "$READER" POST /api/v1/chat '{"message":"hello"}')"
+check "another user is not affected"              504 "$(request "$CONTRIBUTOR" POST /api/v1/chat '{"message":"hello"}')"
 
 echo "--- logs"
 check "no document text or question in API logs"  0 "$(grep -cE '14 days in advance|football world cup' "$WORK/api.log" || true)"

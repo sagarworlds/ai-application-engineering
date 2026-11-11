@@ -58,6 +58,10 @@ public sealed partial class DocumentIngestionService(
         ValidateRoles(command.AllowedRoles);
 
         var contentHash = ComputeContentHash(pages);
+
+        // Deliberately tenant-wide, ignoring the role ACL: content is stored once per tenant. A
+        // contributor can therefore learn that identical text already exists in their own tenant
+        // even if they cannot read that document — accepted, since they already hold the text.
         if (await store.ContentExistsAsync(user.TenantId, contentHash, cancellationToken).ConfigureAwait(false))
         {
             throw new ConflictException("A document with identical content already exists.");
@@ -67,6 +71,12 @@ public sealed partial class DocumentIngestionService(
         if (textChunks.Count == 0)
         {
             throw new RequestValidationException("pages", "The pages contain no text to ingest.");
+        }
+
+        if (textChunks.Count > _options.MaxChunksPerDocument)
+        {
+            throw new RequestValidationException(
+                "pages", $"The document splits into more than {_options.MaxChunksPerDocument} chunks. Split it into smaller documents.");
         }
 
         var document = Document.Create(
@@ -90,6 +100,11 @@ public sealed partial class DocumentIngestionService(
         if (command.Pages.Count == 0)
         {
             throw new RequestValidationException("pages", "At least one page is required.");
+        }
+
+        if (command.Pages.Any(p => p?.Text is null))
+        {
+            throw new RequestValidationException("pages", "Pages must not be null and must have text.");
         }
 
         if (command.Pages.Count > _options.MaxPages)
@@ -120,7 +135,14 @@ public sealed partial class DocumentIngestionService(
             return;
         }
 
-        if (roles.Count > MaxAllowedRoles || roles.Any(r => r is null || r.Length > MaxRoleLength))
+        // A blank entry must be rejected, not dropped: dropping it could leave the list empty,
+        // which means "unrestricted" — the opposite of what the caller asked for.
+        if (roles.Any(string.IsNullOrWhiteSpace))
+        {
+            throw new RequestValidationException("allowedRoles", "Role names must not be blank.");
+        }
+
+        if (roles.Count > MaxAllowedRoles || roles.Any(r => r.Length > MaxRoleLength))
         {
             throw new RequestValidationException(
                 "allowedRoles", $"At most {MaxAllowedRoles} roles of at most {MaxRoleLength} characters are allowed.");

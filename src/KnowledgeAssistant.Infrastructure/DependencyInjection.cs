@@ -47,13 +47,19 @@ public static class DependencyInjection
         services.AddSingleton<IValidateOptions<LlmOptions>, LlmOptionsValidator>();
 
         // Typed clients: IHttpClientFactory owns handler lifetime (DNS refresh, socket reuse).
-        services.AddHttpClient<IChatModel, OpenAiCompatibleChatModel>(ConfigureLlmClient);
-        services.AddHttpClient<IEmbeddingGenerator, OpenAiCompatibleEmbeddingGenerator>(ConfigureLlmClient);
+        services.AddHttpClient<IChatModel, OpenAiCompatibleChatModel>(ConfigureLlmClient)
+            .ConfigurePrimaryHttpMessageHandler(CreateLlmHandler);
+        services.AddHttpClient<IEmbeddingGenerator, OpenAiCompatibleEmbeddingGenerator>(ConfigureLlmClient)
+            .ConfigurePrimaryHttpMessageHandler(CreateLlmHandler);
 
         services.AddHealthChecks().AddDbContextCheck<KnowledgeDbContext>("knowledge-db", tags: [ReadinessTag]);
 
         return services;
     }
+
+    // Redirects are not followed: a redirect would re-send the prompt (and a custom key header such
+    // as "api-key", which .NET does not strip) to a host the operator never configured.
+    private static SocketsHttpHandler CreateLlmHandler() => new() { AllowAutoRedirect = false };
 
     private static void ConfigureLlmClient(IServiceProvider services, HttpClient client) =>
         LlmHttp.Configure(client, services.GetRequiredService<IOptions<LlmOptions>>().Value);
