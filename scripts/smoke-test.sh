@@ -10,32 +10,10 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WORK="${TMPDIR:-/tmp}/eka-smoke"
 API_PORT=5080; SLOW_API_PORT=5081; MOCK_PORT=5099; SLOW_MOCK_PORT=5098
 API="http://127.0.0.1:$API_PORT"
-ISSUER="eka-smoke"; AUDIENCE="api://knowledge-assistant"
-PIDS=()
 FAILED=0
 
-cleanup() {
-  for pid in "${PIDS[@]}"; do kill "$pid" 2>/dev/null || true; done
-  wait 2>/dev/null || true
-  rm -f "$WORK"/*.db*
-}
-trap cleanup EXIT
-
-rm -rf "$WORK"; mkdir -p "$WORK"
-# Throwaway signing key: exists only for this run and is never written to the repository.
-SIGNING_KEY="$(openssl rand -base64 32)"
-
-# Mints an HS256 JWT:  token <tenant> <user> <role>...
-token() {
-  node -e '
-    const { createHmac } = require("node:crypto");
-    const [key, iss, aud, tid, sub, ...roles] = process.argv.slice(1);
-    const b64 = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
-    const now = Math.floor(Date.now() / 1000);
-    const body = `${b64({ alg: "HS256", typ: "JWT" })}.${b64({ iss, aud, tid, sub, roles, nbf: now - 60, iat: now, exp: now + 900 })}`;
-    console.log(`${body}.${createHmac("sha256", Buffer.from(key, "base64")).update(body).digest("base64url")}`);
-  ' "$SIGNING_KEY" "$ISSUER" "$AUDIENCE" "$@"
-}
+# shellcheck source=lib/local-stack.sh
+source "$ROOT/scripts/lib/local-stack.sh"
 
 check() { # check <description> <expected> <actual>
   if [[ "$2" == "$3" ]]; then echo "PASS  $1"; else echo "FAIL  $1 (expected '$2', got '$3')"; FAILED=1; fi
@@ -48,30 +26,10 @@ request() {
   curl -sS -o "$WORK/body" -w '%{http_code}' -X "$2" "${auth[@]}" "${data[@]}" "${BASE:-$API}$3"
 }
 
-start_api() { # start_api <port> <mock-port> <log-name> [extra env assignments...]
-  local port="$1" mock_port="$2" log="$3"; shift 3
-  env "$@" \
-    ASPNETCORE_ENVIRONMENT=Development \
-    ASPNETCORE_URLS="http://127.0.0.1:$port" \
-    ConnectionStrings__KnowledgeDb="Data Source=$WORK/$log.db" \
-    Authentication__Schemes__Bearer__ValidIssuer="$ISSUER" \
-    Authentication__Schemes__Bearer__ValidAudiences__0="$AUDIENCE" \
-    Authentication__Schemes__Bearer__SigningKeys__0__Issuer="$ISSUER" \
-    Authentication__Schemes__Bearer__SigningKeys__0__Value="$SIGNING_KEY" \
-    Llm__BaseUrl="http://127.0.0.1:$mock_port/v1/" Llm__ChatModel=mock-chat Llm__EmbeddingModel=mock-embedding \
-    dotnet run --no-build --no-launch-profile --project "$ROOT/src/KnowledgeAssistant.Api" >"$WORK/$log.log" 2>&1 &
-  PIDS+=($!)
-  for _ in $(seq 1 60); do
-    curl -sf "http://127.0.0.1:$port/health/ready" >/dev/null 2>&1 && return 0
-    sleep 0.5
-  done
-  echo "API on port $port did not become ready; see $WORK/$log.log"; exit 1
-}
-
 echo "Logs: $WORK/api.log"
 dotnet build "$ROOT" --nologo -v quiet >/dev/null
 
-node "$ROOT/tools/mock-llm/server.mjs" "$MOCK_PORT" >"$WORK/mock.log" 2>&1 & PIDS+=($!)
+start_mock "$MOCK_PORT" mock
 start_api "$API_PORT" "$MOCK_PORT" api
 
 CONTRIBUTOR="$(token contoso alice Knowledge.Contributor)"
@@ -141,7 +99,7 @@ check "contributor deletes the document -> 204"   204 "$(request "$CONTRIBUTOR" 
 check "deleted document is no longer evidence"    false "$(request "$READER" POST /api/v1/questions "$QUESTION" >/dev/null; jq -r .answerFound "$WORK/body")"
 
 echo "--- provider timeout (second API instance, 1 s timeout, provider answers after 3 s)"
-MOCK_LLM_DELAY_MS=3000 node "$ROOT/tools/mock-llm/server.mjs" "$SLOW_MOCK_PORT" >"$WORK/slow-mock.log" 2>&1 & PIDS+=($!)
+start_mock "$SLOW_MOCK_PORT" slow-mock MOCK_LLM_DELAY_MS=3000
 start_api "$SLOW_API_PORT" "$SLOW_MOCK_PORT" slow-api Llm__RequestTimeout=00:00:01 RateLimiting__ModelRequestsPerMinute=2
 BASE="http://127.0.0.1:$SLOW_API_PORT"
 check "slow provider -> 504"                      504 "$(request "$READER" POST /api/v1/chat '{"message":"hello"}')"

@@ -38,10 +38,30 @@ public sealed class EfConversationStoreTests : IDisposable
         Assert.Equal(2, (await GetRecentAsync(alice, 10)).Count);
     }
 
-    private async Task AppendAsync(UserContext user, string question, string answer)
+    [Fact]
+    public async Task AppendExchangeAsync_ClockDoesNotAdvance_ExchangesStillKeepTheirOrder()
+    {
+        var user = TestUsers.Reader();
+        var frozen = new FrozenTimeProvider(new DateTimeOffset(2026, 11, 15, 9, 0, 0, TimeSpan.Zero));
+        for (var i = 1; i <= 3; i++)
+        {
+            await AppendAsync(user, $"q{i}", $"a{i}", frozen);
+        }
+
+        var recent = await GetRecentAsync(user, maxMessages: 10);
+
+        Assert.Equal(["q1", "a1", "q2", "a2", "q3", "a3"], recent.Select(m => m.Content));
+    }
+
+    private sealed class FrozenTimeProvider(DateTimeOffset now) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => now;
+    }
+
+    private async Task AppendAsync(UserContext user, string question, string answer, TimeProvider? clock = null)
     {
         await using var db = _database.CreateContext();
-        await new EfConversationStore(db, TimeProvider.System)
+        await new EfConversationStore(db, clock ?? TimeProvider.System)
             .AppendExchangeAsync(user, _conversation, question, answer, CancellationToken.None);
     }
 

@@ -7,8 +7,6 @@ using KnowledgeAssistant.Api.RateLimiting;
 using KnowledgeAssistant.Application;
 using KnowledgeAssistant.Infrastructure;
 
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-
 var builder = WebApplication.CreateBuilder(args);
 
 if (!builder.Environment.IsDevelopment())
@@ -20,14 +18,8 @@ if (!builder.Environment.IsDevelopment())
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
-// Token validation settings (Authority, ValidAudiences, signing keys for local dev tokens) are bound
-// from configuration section "Authentication:Schemes:Bearer". Production: Microsoft Entra ID authority.
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    // Keep raw JWT claim names ("tid", "roles", ...) instead of legacy XML-SOAP claim URIs.
-    .AddJwtBearer(options => options.MapInboundClaims = false);
+builder.Services.AddKnowledgeAuthentication();
 builder.Services.AddKnowledgeAuthorization();
-builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<ICurrentUser, ClaimsCurrentUser>();
 
 builder.Services.AddModelRateLimiting(builder.Configuration);
 builder.Services.AddProblemDetails();

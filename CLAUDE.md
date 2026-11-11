@@ -14,6 +14,7 @@ dotnet list package --vulnerable --include-transitive
 node tools/mock-llm/server.mjs    # OpenAI-compatible fake provider on :5099
 dotnet run --project src/KnowledgeAssistant.Api
 scripts/smoke-test.sh             # real user flows against a running API + mock provider
+scripts/demo.sh                   # paced walkthrough of the same flows (DEMO_SPEED=0 for no pauses)
 ```
 
 ## Architecture rules
@@ -45,6 +46,7 @@ scripts/smoke-test.sh             # real user flows against a running API + mock
 - File-scoped namespaces, `sealed` by default, records for DTOs/value objects.
 - XML doc comments on public types/members; comments explain *why*, not *what*.
 - Logging via source-generated `[LoggerMessage]` methods.
+- Register options with `services.AddValidatedOptions<T>(section)` so they are validated at startup.
 
 ## Tests
 

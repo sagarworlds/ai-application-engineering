@@ -1,4 +1,5 @@
 using KnowledgeAssistant.Application.Abstractions;
+using KnowledgeAssistant.Application.Common;
 using KnowledgeAssistant.Infrastructure.Llm;
 using KnowledgeAssistant.Infrastructure.Persistence;
 using KnowledgeAssistant.Infrastructure.Search;
@@ -40,10 +41,7 @@ public static class DependencyInjection
         services.AddScoped<IConversationStore, EfConversationStore>();
         services.AddScoped<IChunkRetriever, VectorChunkRetriever>();
 
-        services.AddOptions<LlmOptions>()
-            .BindConfiguration(LlmOptions.SectionName)
-            .ValidateDataAnnotations()
-            .ValidateOnStart();
+        services.AddValidatedOptions<LlmOptions>(LlmOptions.SectionName);
         services.AddSingleton<IValidateOptions<LlmOptions>, LlmOptionsValidator>();
 
         // Typed clients: IHttpClientFactory owns handler lifetime (DNS refresh, socket reuse).

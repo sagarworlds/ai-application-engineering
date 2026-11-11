@@ -9,6 +9,8 @@ namespace KnowledgeAssistant.Infrastructure.Persistence;
 /// <summary>EF Core implementation of <see cref="IConversationStore"/>.</summary>
 internal sealed class EfConversationStore(KnowledgeDbContext db, TimeProvider timeProvider) : IConversationStore
 {
+    private static long s_lastSequence;
+
     public async Task<IReadOnlyList<ChatMessage>> GetRecentAsync(
         UserContext user, Guid conversationId, int maxMessages, CancellationToken cancellationToken)
     {
@@ -31,12 +33,30 @@ internal sealed class EfConversationStore(KnowledgeDbContext db, TimeProvider ti
     {
         var now = timeProvider.GetUtcNow();
 
-        // UTC ticks give a monotonic ordering key without a read-before-write; +1 keeps the answer after its question.
-        var sequence = now.UtcTicks;
+        var sequence = NextSequence(now.UtcTicks);
         db.ConversationMessages.AddRange(
             ConversationMessage.Create(user, conversationId, sequence, ConversationRole.User, question, now),
             ConversationMessage.Create(user, conversationId, sequence + 1, ConversationRole.Assistant, answer, now));
 
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Returns an ordering key for a question; the answer uses the key plus one. Keys follow the
+    /// clock but never repeat or go backwards within this process, so two exchanges saved in the
+    /// same clock tick (parallel requests, a coarse or fixed clock) cannot interleave.
+    /// </summary>
+    private static long NextSequence(long utcTicks)
+    {
+        while (true)
+        {
+            var last = Interlocked.Read(ref s_lastSequence);
+            // +2 leaves room for the previous exchange's answer.
+            var next = Math.Max(utcTicks, last + 2);
+            if (Interlocked.CompareExchange(ref s_lastSequence, next, last) == last)
+            {
+                return next;
+            }
+        }
     }
 }

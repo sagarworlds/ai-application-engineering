@@ -43,8 +43,11 @@ function groundedAnswer(userContent) {
   }
   const enoughEvidence = best.overlap >= Math.max(2, Math.ceil(questionTokens.size / 2));
   if (!enoughEvidence) return { answerFound: false, answer: '', citations: [] };
-  const firstSentence = best.text.split(/(?<=[.!?])\s+/)[0];
-  return { answerFound: true, answer: `${firstSentence} [${best.id}]`, citations: [best.id] };
+  // Quote the sentence (or line) of that source which shares the most words with the question.
+  const sentences = best.text.split(/(?<=[.!?])\s+|\n+/).filter((sentence) => sentence.trim().length > 0);
+  const relevance = (sentence) => new Set(tokenize(sentence).filter((token) => questionTokens.has(token))).size;
+  const quoted = sentences.reduce((top, sentence) => (relevance(sentence) > relevance(top) ? sentence : top));
+  return { answerFound: true, answer: `${quoted.trim()} [${best.id}]`, citations: [best.id] };
 }
 
 function readJson(request) {

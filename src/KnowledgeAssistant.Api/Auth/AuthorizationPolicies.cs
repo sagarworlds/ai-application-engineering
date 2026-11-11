@@ -1,5 +1,6 @@
 using KnowledgeAssistant.Domain.Security;
 
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 
 namespace KnowledgeAssistant.Api.Auth;
@@ -15,6 +16,21 @@ internal static class AuthorizationPolicies
 
     /// <summary>Chat and ask questions.</summary>
     public const string QuestionsAsk = "Questions.Ask";
+
+    /// <summary>
+    /// Registers JWT bearer authentication and the claims-based <see cref="ICurrentUser"/>.
+    /// Token validation settings (Authority, ValidAudiences, signing keys for local dev tokens) are
+    /// bound by the framework from configuration section <c>Authentication:Schemes:Bearer</c>.
+    /// </summary>
+    public static IServiceCollection AddKnowledgeAuthentication(this IServiceCollection services)
+    {
+        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            // Keep raw JWT claim names ("tid", "roles", ...) instead of legacy XML-SOAP claim URIs.
+            .AddJwtBearer(options => options.MapInboundClaims = false);
+        services.AddHttpContextAccessor();
+        services.AddScoped<ICurrentUser, ClaimsCurrentUser>();
+        return services;
+    }
 
     public static IServiceCollection AddKnowledgeAuthorization(this IServiceCollection services)
     {

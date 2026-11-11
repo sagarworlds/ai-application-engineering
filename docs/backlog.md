@@ -2,7 +2,7 @@
 
 Status: ✅ done · ⏭ next · 🗂 later
 
-## Done (days 1–6)
+## Done (days 1–6, day 11 checkpoint)
 
 - ✅ Repo, solution skeleton, requirements, architecture, plan
 - ✅ Health, document metadata, question endpoints; DTOs, validation, ProblemDetails, OpenAPI
@@ -12,8 +12,14 @@ Status: ✅ done · ⏭ next · 🗂 later
 - ✅ Document-aware chunking, embeddings, SQLite dev vector store, ingestion endpoint
 - ✅ Independent code + security review; fixes: linear-time heading parsing, section/chunk caps, per-user rate
   limit and body limits on model-backed endpoints, blank-role rejection, no redirects on the model client
+- ✅ Day 11: options/auth registration refactor, shared script helpers, README, recorded demo,
+  [checkpoint with the top five gaps](checkpoint-day11.md)
 
 ## Next
+
+Ordered as in the [checkpoint](checkpoint-day11.md): the first two gate the move to agents.
+
+- ⏭ **Real provider run**: smoke test and demo against Azure OpenAI (or compatible); tune `Retrieval:MinScore`
 
 - ⏭ **Retrieval quality**: hybrid (keyword + vector) search, re-ranking, query rewriting using conversation history
 - ⏭ **Evaluation set**: golden questions with expected citations; track groundedness and unknown-answer precision

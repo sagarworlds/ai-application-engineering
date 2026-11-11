@@ -1,5 +1,6 @@
 using KnowledgeAssistant.Application.Abstractions;
 using KnowledgeAssistant.Application.Chat;
+using KnowledgeAssistant.Application.Common;
 using KnowledgeAssistant.Application.Conversations;
 using KnowledgeAssistant.Application.Documents;
 using KnowledgeAssistant.Application.Ingestion;
@@ -19,25 +20,12 @@ public static class DependencyInjection
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
         services.AddSingleton(TimeProvider.System);
-        services.AddOptions<GenerationOptions>()
-            .BindConfiguration(GenerationOptions.SectionName)
-            .ValidateDataAnnotations()
-            .ValidateOnStart();
 
-        services.AddOptions<ConversationOptions>()
-            .BindConfiguration(ConversationOptions.SectionName)
-            .ValidateDataAnnotations()
-            .ValidateOnStart();
-
-        services.AddOptions<IngestionOptions>()
-            .BindConfiguration(IngestionOptions.SectionName)
-            .ValidateDataAnnotations()
-            .ValidateOnStart();
+        services.AddValidatedOptions<GenerationOptions>(GenerationOptions.SectionName);
+        services.AddValidatedOptions<ConversationOptions>(ConversationOptions.SectionName);
+        services.AddValidatedOptions<RetrievalOptions>(RetrievalOptions.SectionName);
+        services.AddValidatedOptions<IngestionOptions>(IngestionOptions.SectionName);
         services.AddSingleton<IValidateOptions<IngestionOptions>, IngestionOptionsValidator>();
-        services.AddOptions<RetrievalOptions>()
-            .BindConfiguration(RetrievalOptions.SectionName)
-            .ValidateDataAnnotations()
-            .ValidateOnStart();
 
         services.AddSingleton<ITextChunker, DocumentAwareChunker>();
         services.AddScoped<DocumentIngestionService>();

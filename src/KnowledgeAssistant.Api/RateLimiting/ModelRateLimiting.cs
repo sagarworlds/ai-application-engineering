@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Threading.RateLimiting;
 
 using KnowledgeAssistant.Api.Auth;
+using KnowledgeAssistant.Application.Common;
 
 namespace KnowledgeAssistant.Api.RateLimiting;
 
@@ -27,10 +28,7 @@ internal static class ModelRateLimiting
     /// </summary>
     public static IServiceCollection AddModelRateLimiting(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddOptions<RateLimitOptions>()
-            .BindConfiguration(RateLimitOptions.SectionName)
-            .ValidateDataAnnotations()
-            .ValidateOnStart();
+        services.AddValidatedOptions<RateLimitOptions>(RateLimitOptions.SectionName);
 
         var permitsPerMinute = configuration.GetSection(RateLimitOptions.SectionName).Get<RateLimitOptions>()?.ModelRequestsPerMinute
             ?? new RateLimitOptions().ModelRequestsPerMinute;
