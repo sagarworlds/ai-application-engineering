@@ -39,7 +39,7 @@ Ordered as in the [checkpoint](checkpoint-day11.md): the first two gate the move
 - 🗂 Tool calling (e.g. "look up document by title") and streaming grounded answers
 - 🗂 Token-accurate budgeting (tokenizer) instead of the chars/4 estimate
 - 🗂 OpenTelemetry traces/metrics; token usage per tenant
-- 🗂 Dockerfile + compose (API + pgvector), CI workflow (build, test, vulnerability scan)
+- 🗂 Dockerfile + compose (API + pgvector)
 - 🗂 Audit log of questions/answers per tenant with retention policy
 - 🗂 Content safety filtering and PII redaction on ingestion
 - 🗂 Move tests from xunit 2 (marked legacy on NuGet) to xunit.v3

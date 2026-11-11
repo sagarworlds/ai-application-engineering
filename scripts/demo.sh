@@ -3,7 +3,7 @@
 # boundary. Every response shown is a live response from the real API process. The model behind
 # it is tools/mock-llm (a deterministic offline stand-in), unless you point Llm__* at a real one.
 #
-# Usage: scripts/demo.sh            paced for recording or presenting (about 4 minutes)
+# Usage: scripts/demo.sh                paced for recording or presenting (about 4 minutes)
 #        DEMO_SPEED=0 scripts/demo.sh   no pauses (quick check)
 # Requires: dotnet 10 SDK, node, curl, jq, openssl.
 set -euo pipefail
@@ -12,7 +12,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WORK="${TMPDIR:-/tmp}/eka-demo"
 API_PORT="${DEMO_API_PORT:-5090}"; MOCK_PORT="${DEMO_MOCK_PORT:-5097}"
 API="http://127.0.0.1:$API_PORT"
-SPEED="${DEMO_SPEED:-1}"
+SPEED="${DEMO_SPEED:-1.5}"
 SAMPLES="$ROOT/docs/demo/sample-documents"
 
 # shellcheck source=lib/local-stack.sh

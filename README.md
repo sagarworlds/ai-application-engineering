@@ -8,7 +8,7 @@ client ──JWT──▶ .NET 10 Minimal API ──▶ retrieval (tenant + role
                       └─ ingestion ──▶ document-aware chunking ──▶ embeddings ──▶ vector store
 ```
 
-**Demo (4 minutes, no audio):** [docs/demo/demo.mp4](docs/demo/demo.mp4) — ingestion, cited answers, an
+**Demo (3 min 50 s, no audio):** [docs/demo/demo.mp4](docs/demo/demo.mp4) — ingestion, cited answers, an
 unanswerable question and the tenant boundary. It is a capture of one real run of `scripts/demo.sh`.
 
 | Document | What it covers |
@@ -346,6 +346,7 @@ tools/
   demo-recorder                      turns a demo run into the video and screenshots
 docs/                                requirements, architecture, notes, checkpoint, demo assets
 .claude/                             skills (verify, add-endpoint, smoke-test) and guard hooks
+.github/workflows/ci.yml             build, format check, tests, vulnerability scan, smoke test
 ```
 
 ## Recording the demo again

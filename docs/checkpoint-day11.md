@@ -20,7 +20,7 @@ provider. Closing that gap, and adding a way to measure answer quality, should c
 Evidence from this checkpoint:
 
 - `dotnet test`: 211 tests pass (144 unit, 67 integration).
-- `scripts/smoke-test.sh`: all checks pass against the real API process over HTTP.
+- `scripts/smoke-test.sh`: all 42 checks pass against the real API process over HTTP.
 - `scripts/demo.sh`: recorded in [demo/demo.mp4](demo/demo.mp4); stills in [images/](images/).
 - No vulnerable packages reported; no secrets in tracked files.
 
@@ -75,11 +75,11 @@ failure means starting again. There is no document status, re-ingestion or versi
 ### 5. Not operable beyond a developer machine
 
 SQLite with `EnsureCreated` (no migrations), no retry or back-off when the provider returns 429 or 5xx,
-no traces or metrics (token usage, latency, unknown-answer rate per tenant), no CI pipeline, no container
-image, and no UI — the API is driven with curl. Remaining hardening items from the security review
+no traces or metrics (token usage, latency, unknown-answer rate per tenant), no container image, and no UI — the API is driven with curl. Remaining hardening items from the security review
 (per-tenant quotas, startup failure when auth is unconfigured, conversation retention) are in the backlog.
 
-*Next step:* CI (build, test, vulnerability scan), provider retries, OpenTelemetry, then a minimal UI.
+*Next step:* provider retries, OpenTelemetry, migrations, then a minimal UI. (CI now exists: build, format,
+tests, vulnerability scan and the smoke test on every pull request.)
 
 ## Before moving to agents
 

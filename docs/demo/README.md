@@ -1,13 +1,13 @@
 # Demo
 
-`demo.mp4` (about 4 minutes, silent) is a capture of one real run of `scripts/demo.sh`: every response on
+`demo.mp4` (3 min 50 s, silent) is a capture of one real run of `scripts/demo.sh`: every response on
 screen came from the running API. The model behind it is `tools/mock-llm`, a deterministic stand-in, so
 the answer wording is simpler than a real model's.
 
 ## Talk track
 
 Use this if you record a narrated version. Run `scripts/demo.sh` and speak over each scene; the script
-pauses long enough for roughly these lines. `DEMO_SPEED=1.3` slows it down, `DEMO_SPEED=0.8` speeds it up.
+pauses long enough for roughly these lines. The default is `DEMO_SPEED=1.5`; `2` is slower, `1` is faster.
 
 | # | Scene | Say |
 |---|---|---|
